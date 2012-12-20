@@ -20,64 +20,67 @@ For instance, the sequence of length N = 5 with the characters “12321″ is ac
 */
 
 #include <iostream>
-#include <vector>
+#include <deque>
 
 static const unsigned int sc_maxVal = 3;
 typedef unsigned int Val;
-typedef std::vector<Val> Sequence;
+typedef std::deque<Val> Sequence;
+typedef unsigned int uint;
 
-class SuffixTreeNode;
-typedef std::auto_ptr<SuffixTreeNode> SuffixTreeNodePtr;
-
-/**
- * Class to keep the suffix tree node. 
- * Each node can have up to 3 (sc_maxVal) children.
- * E.g
- *                          o
- *          {1}            {2}           {3}
- *    {3,1} {3,2} {3,3}       {3,2}   {1,3} {3,3}
- *
- */
-class SuffixTreeNode {
-public:
-	SuffixTreeNode() {
-		children.resize(sc_maxVal);
+bool hasRepeatingWithLen(const Sequence& sequence, uint len) {
+	for (uint pos = 0; pos < len; ++pos) {
+		if (sequence[pos] != sequence[pos + len]) {
+			return false;
+		}
 	}
-
-	Sequence fullValue_;						// Full subsequence, like {1,2}
-	std::vector<SuffixTreeNodePtr> children_;	// Children
-	std::vector<unsigned int> positions_;		// Positions where this subsequence already presents in the sequence
-};
-
-/*
-void test() {
-	Val expected[] = {
-		1,
-		2,
-		3,
-
-		1,2,
-		1,3,
-		2,1,
-		2,3,
-		3,1,
-		3,2,
-
-		1,2,1,
-		1,2,3,
-		1,3,1,
-		1,3,2,
-		2,1,2
-		2,1,3
-
-
-
-	};
+	return true;
 }
-*/
+
+// checks if there are any adjucent subsequences in the beginning of sequence.
+// e.g. 1,2,1,2 or 1,1,3,2 will return true
+//      1,2,3,3 or 1,3,1,2 will return false
+bool noAdjucentSubsequencesInTheBeginning(const Sequence& sequence) {
+
+	const uint halfSize = sequence.size()/2;
+	for (uint i = 1; i <= halfSize; ++i) {
+		if (hasRepeatingWithLen(sequence, i)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void buildSequence(const Sequence& sequence, uint maxSize) {
+
+	for (Val val = 1; val <= sc_maxVal; ++val) {
+		Sequence seq = sequence;
+		seq.push_front(val);
+		if (!noAdjucentSubsequencesInTheBeginning(seq)) {
+			// there are adjucent equal subsequences, this is not a solution.
+			continue;
+		}
+
+		// print out solution
+		for (uint i = 0; i < seq.size(); ++i) {
+			if (i) {
+				std::cout << ", ";
+			}
+			std::cout << seq[i];
+		}
+		std::cout << std::endl;
+
+		// Check longer sequences
+		if (seq.size() < maxSize) {
+			buildSequence(seq, maxSize);
+		}
+	}
+}
 
 int main() {
-	std::cout << "Hello World!" << std::endl;
+	Sequence sequence;
+	buildSequence(sequence, 8);
+	char c;
+	std::cin >> c;
 	return 0;
 }
 
