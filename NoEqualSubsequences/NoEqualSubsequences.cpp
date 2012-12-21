@@ -78,7 +78,7 @@ void buildSequence(const Sequence& sequence, uint maxSize) {
 
 int main() {
 	Sequence sequence;
-	buildSequence(sequence, 8);
+	buildSequence(sequence, 5);
 	char c;
 	std::cin >> c;
 	return 0;
