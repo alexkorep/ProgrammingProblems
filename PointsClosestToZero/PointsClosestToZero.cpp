@@ -26,8 +26,8 @@ int SortOut(PointList& points, int value, int startPos, int endPos) {
 	int i = startPos;
 	int j = endPos;
 	while (i < j) {
-		while (points[i].distance < value) ++i;
-		while (points[j].distance > value) --j;
+		while (points[i].distance < value && i < j) ++i;
+		while (points[j].distance > value && i < j) --j;
 		if (i < j) {
 			std::swap(points[i], points[j]);
 		}
