@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{95E009E3-8EA9-40FC-9F2E-B101428DB74C}</ProjectGuid>
+    <ProjectGuid>{6AFF9C5D-8439-43F2-BD67-9EFD2468C5E9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ByteIsle</RootNamespace>
+    <RootNamespace>ByteIsleTest</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -74,10 +74,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ByteIsle.cpp" />
+    <ClCompile Include="ByteIsleTest.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ByteIsle.h" />
+    <ClInclude Include="tinytest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -59,11 +59,13 @@ Constraints
 #include <utility>
 #include <vector>
 #include <map>
+#include "ByteIsle.h"
 
 using namespace std;
 
 typedef pair<int, int> Answer;
 typedef vector<Answer> Answers;
+typedef map<int, int> SolutionIntervals;
 /*
 typedef vector<int> Solution; // 1 = knight, 0 = knave
 
@@ -97,6 +99,7 @@ void printResult(int numberOfSolutions, const vector<bool>& fistSolution)
 	}
 	cout << endl;
 }
+
 
 void solve() {
 	Answers answers; // 1-based vector of answers
@@ -136,85 +139,33 @@ void solve() {
 	// Now we need to find the first lexographical solution
 	// find solution intervals. Invervals are stored in map, [a, b] is stored in the way that map[a] = b.
 	int intervalBegin = -1;
-	map<int, int> solInterval;
+	IntervalRemover remover;
 	for (int i = 0; i <= nBytelandians; ++i) {
 		if (solutions[i] && intervalBegin < 0) {
 			intervalBegin = i;
 		} else if (!solutions[i] && intervalBegin >= 0) {
-			solInterval[intervalBegin] = i - 1;
+			remover.add(intervalBegin, i - 1);
 			intervalBegin = -1;
 		}
 	}
 
 	// Close the last interval
 	if (intervalBegin >= 0) {
-		solInterval[intervalBegin] = nBytelandians;
+		remover.add(intervalBegin, nBytelandians);
 	}
 
 
 	// Go through all alswers and eliminate solutions which are inside of answer if number of solutions left will stay > 0
 	vector<bool> fistSolution(nBytelandians, true);
-	int solutionsLeft = numberOfSolutions;
+	int numberOfSolutionsLeft = numberOfSolutions;
 	for (int i = 1; i <= nBytelandians; ++i) {
 		const int& a = answers[i].first;
 		const int& b = answers[i].second;
 
-		// find solution interval with begin greater or equal to a
-		map<int, int>::iterator itr = solInterval.lower_bound(a);;
-
-		// check if b is within this interval or after it
-		if (itr != solInterval.end() && b >= itr->first) {
-			if (b < itr->second) {
-				const int solutionsToRemove = b - itr->first + 1;
-				if (solutionsToRemove <= solutionsLeft) {
-					// remove only the first part of interval from begin to b
-					const int intervalEnd = itr->second;
-					solInterval.erase(itr);
-					solInterval[b + 1] = intervalEnd;
-					solutionsLeft -= solutionsToRemove;
-					fistSolution[i - 1] = false;
-				}
-			} else { // b >= itr->second
-				// interval is completely within this answer
-				// need to remove this interval completely
-				const int solutionsToRemove = itr->second - itr->first + 1;
-				if (solutionsToRemove <= solutionsLeft) {
-					solInterval.erase(itr);
-					solutionsLeft -= solutionsToRemove;
-					fistSolution[i - 1] = false;
-				}
-			}
-		} else {
-			// check if solution begin is within any interval
-			// find the interval which begin is to the left of a (or equals to it)
-			itr = solInterval.upper_bound(a);
-			if (!solInterval.empty() && itr != solInterval.begin()) {
-				--itr;
-			}
-
-			if (itr != solInterval.end() && a <= itr->second) {
-				// solution begin is within the interval
-				// Let's find if b is withing this interval or not
-				if (b < itr->second) {
-					// it's completely inside, need to remove [a,b] from inside of interval
-					const int solutionsToRemove = b - a + 1;
-					if (solutionsToRemove <= solutionsLeft) {
-						const int intervalEnd = itr->second;
-						itr->second = a - 1;
-						solInterval[b + 1] = intervalEnd;
-						solutionsLeft -= solutionsToRemove;
-						fistSolution[i - 1] = false;
-					}
-				} else {
-					// b is outside of interval (to the right)
-					const int solutionsToRemove = itr->second - a + 1;
-					if (solutionsToRemove <= solutionsLeft) {
-						itr->second = a - 1;
-						solutionsLeft -= solutionsToRemove;
-						fistSolution[i - 1] = false;
-					}
-				}
-			}
+		const int removed = remover.removeIntervals(a, b, numberOfSolutionsLeft - 1);
+		numberOfSolutionsLeft -= removed;
+		if (!removed) {
+			fistSolution[i - 1] = false;
 		}
 	}
 
@@ -222,83 +173,6 @@ void solve() {
 }
 
 
-/*
-void solve() {
-	int nBytelandians = 0;
-	cin >> nBytelandians;
-
-	Answers answers;
-	answers.reserve(nBytelandians);
-	for (int i = 0; i < nBytelandians; ++i) {
-		int a = 0;
-		int b = 0;
-		cin >> a >> b;
-		answers.push_back(Answer(a, b));
-	}
-
-	// find solution
-	Solution smallestSolution(nBytelandians, 1);
-	Solution currentSolution(nBytelandians, 0);
-	int nSolutions = 0;
-
-	// 
-	for (int nKnights = 0; nKnights <= nBytelandians; ++nKnights) {
-		//cout << nKnights << "|";
-
-		// How many bytelandians said true if there are a given number of knights
-		int trueAnswers = 0;
-
-		int closestNextEdge = nBytelandians;
-		for (int i = 0; i < nBytelandians; ++i) {
-			const Answer& answer = answers[i];
-			const bool trueAnswer = (answer.first <= nKnights && nKnights <= answer.second);
-			currentSolution[i] = trueAnswer ? 1 : 0;
-
-			int nextEdge = 0;
-			if (trueAnswer) {
-				nextEdge = answer.second + 1;
-			} else if (nKnights < answer.first) {
-				nextEdge = answer.first;
-			} else {
-				nextEdge = nBytelandians;
-			}
-
-			if (nextEdge < closestNextEdge) {
-				closestNextEdge = nextEdge;
-			}
-
-			if (trueAnswer) {
-				++trueAnswers;
-			}
-		}
-
-		if (trueAnswers == nKnights) {
-			// this is a solution
-			increment(nSolutions);
-
-			// Check if current solution is smaller than smallest solution
-			for (int i = 0; i < nBytelandians; ++i) {
-				if (currentSolution[i] < smallestSolution[i]) {
-					// current solution is smaller then smalles solution
-					smallestSolution = currentSolution;
-					break;
-				} else if (currentSolution[i] > smallestSolution[i]) {
-					// smallest solution is smaller than current one
-					break;
-				}
-			}
-		}
-
-		nKnights = closestNextEdge;
-	}
-
-	cout << nSolutions << endl;
-	for (int i = 0; i < nBytelandians; ++i) {
-		cout << smallestSolution[i] << " ";
-	}
-	cout << endl;
-}
-*/
 
 int main()
 {
