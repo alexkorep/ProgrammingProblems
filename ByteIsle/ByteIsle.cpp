@@ -55,144 +55,121 @@ Constraints
 0 <= ai <= bi <= N
 */
 
+#include <sstream>
 #include <iostream>
-#include <utility>
 #include <vector>
-#include <map>
-#include "ByteIsle.h"
+#include <algorithm>
+#include <set>
 
 using namespace std;
 
-typedef pair<int, int> Answer;
-typedef vector<Answer> Answers;
-typedef map<int, int> SolutionIntervals;
-/*
-typedef vector<int> Solution; // 1 = knight, 0 = knave
+// Answers
+vector<int> a;
+vector<int> b;
 
-static const int modulo = 1000000037;
+// |i| is inside this |solutions| set when |i| equals to the number of knights which said there are i knights (knights[i] == i)
+set<int> solutions;
 
-void increment(int& nSolution) {
-	++nSolution;
-	if (nSolution >= modulo) {
-		nSolution = 0;
-	}
-}
-*/
+vector<int> diff;
 
-// reads answers and returns number of Bytelandians
-int readAnswers(Answers& answers) {
-	int nBytelandians = 0;
-	cin >> nBytelandians;
+void solveCase(istream& istr, ostream& ostr) {
+   int numPeople = 0;
+   istr >> numPeople;
 
-	answers.resize(nBytelandians + 1);
-	for (int i = 1; i <= nBytelandians; ++i) {
-		cin >> answers[i].first >> answers[i].second;
-	}
-	return nBytelandians;
-}
+   // Read solutions from stream
+   a.resize(numPeople);
+   b.resize(numPeople);
+   for (int i = 0; i < numPeople; ++i) {
+      istr >> a[i] >> b[i];
+   }
 
-void printResult(int numberOfSolutions, const vector<bool>& fistSolution)
-{
-	cout << numberOfSolutions << endl;
-	for (unsigned int i = 0; i < fistSolution.size(); ++i) {
-		cout << (fistSolution[i] ? "1" : "0") << " ";
-	}
-	cout << endl;
-}
+   // Build diff array
+   diff.resize(numPeople + 2);
+   std::fill(diff.begin(), diff.end(), 0);
+   for (int i = 0; i < numPeople; ++i) {
+      ++diff[a[i]];
+      --diff[b[i] + 1];
+   }
 
+   // Find solutions
+   solutions.clear();
+   int val = 0;
+   for (int i = 0; i <= numPeople; ++i) {
+      val += diff[i];
+      if (val == i) {
+         solutions.insert(i);
+      }
+   }
 
-void solve() {
-	Answers answers; // 1-based vector of answers
-	const int nBytelandians = readAnswers(answers);
+   ostr << solutions.size() << endl;
 
-	// knights[i] = number of people who told that there are i knights.
-	// knightDiff[i] = knights[i] - knights[i - 1];
+   // Find the first solution lexicographically
+   int min = solutions.empty() ? 0 : *solutions.begin();
+   int max = solutions.empty() ? 0 : *solutions.rbegin();
+   for (int i = 0; i < numPeople; ++i) {
+      if (solutions.empty()) {
+         ostr << "0";
+         continue;
+      }
 
-	// Build knightDiff
-	vector<int> knightDiff(nBytelandians + 1, 0);
-	for (int i = 0; i <= nBytelandians; ++i) {
-		++knightDiff[answers[i].first];
-		const int& answerMax = answers[i].second;
-		if (answerMax < nBytelandians) {
-			--knightDiff[answerMax + 1];
-		}
-	}
-
-	// build knights
-	int curKnights = 0;
-	vector<int> knights(nBytelandians + 1, 0);
-	for (int i = 0; i <= nBytelandians; ++i) {
-		curKnights += knightDiff[i];
-		knights[i] = curKnights;
-	}
-
-	// find solutions
-	int numberOfSolutions = 0;
-	vector<bool> solutions(nBytelandians + 1, false);
-	for (int i = 0; i <= nBytelandians; ++i) {
-		if (i == knights[i]) {
-			++numberOfSolutions;
-			solutions[i] = true;
-		}
-	}
-
-	// Now we need to find the first lexographical solution
-	// find solution intervals. Invervals are stored in map, [a, b] is stored in the way that map[a] = b.
-	int intervalBegin = -1;
-	IntervalRemover remover;
-	for (int i = 0; i <= nBytelandians; ++i) {
-		if (solutions[i] && intervalBegin < 0) {
-			intervalBegin = i;
-		} else if (!solutions[i] && intervalBegin >= 0) {
-			remover.add(intervalBegin, i - 1);
-			intervalBegin = -1;
-		}
-	}
-
-	// Close the last interval
-	if (intervalBegin >= 0) {
-		remover.add(intervalBegin, nBytelandians);
-	}
-
-
-	// Go through all alswers and eliminate solutions which are inside of answer if number of solutions left will stay > 0
-	vector<bool> fistSolution(nBytelandians, true);
-	int numberOfSolutionsLeft = numberOfSolutions;
-	for (int i = 1; i <= nBytelandians; ++i) {
-		const int& a = answers[i].first;
-		const int& b = answers[i].second;
-
-		const int removed = remover.removeIntervals(a, b, numberOfSolutionsLeft - 1);
-		numberOfSolutionsLeft -= removed;
-		if (!removed) {
-			fistSolution[i - 1] = false;
-		}
-	}
-
-	printResult(numberOfSolutions, fistSolution);
+      if (a[i] <= min && max <= b[i]) {
+         // All possible solution are within the answer this bytelandian gave
+         ostr << "1";
+      } else {
+         solutions.erase(solutions.lower_bound(a[i]), solutions.upper_bound(b[i]));
+         min = *solutions.begin();
+         max = *solutions.rbegin();
+         ostr << "0";
+      }
+   }
+   ostr << endl;
 }
 
-
+void Solve(istream& istr, ostream& ostr) {
+   int casesCount = 0;
+   istr >> casesCount;
+   for (int i = 0; i < casesCount; ++i) {
+      solveCase(istr, ostr);
+   }
+}
 
 int main()
 {
-	int nCases = 0;
-	cin >> nCases;
-	for (int i = 0; i < nCases; ++i) {
-		solve();
-	}
+   /*
+   string test01 = 
+      "3\n"
 
-	/*
-	const int N = 50000;
-	cout << N << endl;
-	for (int i = 0; i < N; ++i) {
-		int a = rand()%N;
-		int b = rand()%N;
-		if (a > b) swap(a, b);
-		cout << a << " " << b << endl;
-	}
-	*/
+      "1\n"
+      "0 1\n"
 
-	return 0;
+      "4\n"
+      "1 4\n"
+      "2 4\n"
+      "3 4\n"
+      "4 4\n"
+
+      "3\n"
+      "1 2\n"
+      "0 0\n"
+      "1 3\n";
+   */
+   /*
+   1
+   1
+   5
+   0000
+   1
+   101
+   */
+
+   /*
+   string expected01 = 
+      "1\n1";
+
+   stringstream result;
+   Solve(stringstream(test01), result);
+   expected01 = result.str();
+   */
+   Solve(cin, cout);
+   return 0;
 }
-
