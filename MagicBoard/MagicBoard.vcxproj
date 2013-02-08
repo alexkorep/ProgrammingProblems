@@ -76,6 +76,9 @@
   <ItemGroup>
     <ClCompile Include="MagicBoard.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DistanceTree.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
