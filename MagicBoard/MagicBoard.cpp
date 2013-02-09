@@ -1,67 +1,106 @@
-/*
-Long long ago, there is a magic board. The magic board has N*N cells: N rows and N columns. Every cell contains one integer, which is 0 initially. Let the rows and the columns be numbered from 1 to N.
-There are 2 types of operations can be applied to the magic board:
-RowSet i x: it means that all integers in the cells on row i have been changed to x after this operation.
-ColSet i x: it means that all integers in the cells on column i have been changed to x after this operation.
-And your girlfriend sometimes has an interest in the total number of the integers 0s on some row or column.
-RowQuery i: it means that you should answer the total number of 0s on row i.
-ColQuery i: it means that you should answer the total number of 0s on column i.
-Input
-
-The first line of input contains 2 space-separated integers N and Q. They indicate the size of the magic board, and the total number of operations and queries from the girlfriend.
-Then each of the next Q lines contains an operation or a query by the format mentioned above.
-Output
-
-For each query, output the answer of the query.
-Constraints
-
-1 ? N, Q ? 500000 (5 * 105)
-1 ? i ? N
-x ? {0, 1} (That is, x = 0 or 1)
-Sample
-
-Input:
-3 6
-RowQuery 1
-ColSet 1 1
-RowQuery 1
-ColQuery 1
-RowSet 1 0
-ColQuery 1
-
-Output:
-3
-2
-0
-1
-Explanation
-
-At first, the magic board is
-000 <- row 1
-000
-000
-So the answer of first query "RowQuery 1" is 3.
-After the "ColSet 1 1", the board becomes
-column 1
-|
-V
-100
-100
-100
-So the answer of the second query "RowQuery 1" is clearly 2, since the cell (1,1) became 1. And the answer of the third query "ColQuery 1" is 0.
-Finally, apply the operation "RowSet 1 0", the board has changed to
-000
-100
-100
-From this board, the answer of the last query "ColQuery 1" should be 1.
-*/
-
 #include <stdio.h>
 #include <vector>
-#include <iostream>
 #include <set>
 #include <memory>
-#include "DistanceTree.h"
+
+typedef char Value;
+
+struct Node {
+   int parent_;
+   int left_;
+   int right_;
+   Value value_;
+   int leftCount_;
+   int rightCount_;
+
+   Node()
+      : parent_(-1)
+      , left_(-1)
+      , right_(-1)
+      , value_(0)
+      , leftCount_(0)
+      , rightCount_(0)
+   {}
+
+};
+
+class DistanceTree {
+public:
+   // O(size) time
+   DistanceTree(int size) {
+      nodes_.resize(size);
+      root_ = init(-1, 0, size - 1);
+   }
+
+   // O(Ln(size))
+   void Set(int pos, Value val) {
+      Node& node = nodes_[pos];
+
+      const Value oldVal = node.value_;
+      if (oldVal == val) {
+         // Value is already there
+         return;
+      }
+
+      // Set new value
+      node.value_ = val;
+
+      // Update parents up to the root
+      int i = pos;
+      while (i != root_) {
+         const int parent = nodes_[i].parent_;
+         int& valToUpdate = nodes_[parent].left_ == i ? 
+            nodes_[parent].leftCount_ : nodes_[parent].rightCount_;
+         valToUpdate += (val - oldVal);
+         i = parent;
+      }
+   }
+
+   // O(Ln(size))
+   int CountFrom(int pos) {
+      int result = 0;
+      int i = pos;
+      int iOld = nodes_[i].left_;
+
+      while (i != -1) {
+         if (nodes_[i].left_ == iOld) { // if we came from the left subtree (or this is the initial node)
+            result += nodes_[i].value_ + nodes_[i].rightCount_;
+         }
+         iOld = i;
+         i = nodes_[i].parent_;
+      }
+
+      return result;
+   }
+
+private:
+
+   // Initializes subtree from nodes begin to end.
+   // Returns subtree root node id.
+   // parent is parent node.
+   int init(int parent, int begin, int end) {
+      const int middle = (end + begin) / 2;
+      Node& root = nodes_[middle];
+      root.parent_ = parent;
+      root.leftCount_ = 0;
+      root.rightCount_ = 0;
+
+      if (middle - begin > 0) {
+         root.left_ = init(middle, begin, middle - 1);
+      }
+
+      if (end - middle > 0) {
+         root.right_ = init(middle, middle + 1, end);
+      }
+
+      return middle;
+   }
+
+   int root_;
+   std::vector<Node> nodes_;
+};
+
+typedef std::auto_ptr<DistanceTree> DistanceTreePtr;
 
 const int rowSetOp = 'SwoR'; //'RowS';
 const int colSetOp = 'SloC'; //'ColS';
@@ -100,79 +139,126 @@ DistanceTreePtr vertOnes;
 // Step ## which fill horizontal lines with ones
 DistanceTreePtr vertZeros;
 
+struct Operation {
+    bool isWrite_; // type of operation
+    bool isCol_;
+    int colrow_;
+    char value_;
+    Operation(bool isCol, int colrow, char value, bool isWrite)
+        : isCol_(isCol)
+        , colrow_(colrow)
+        , value_(value)
+        , isWrite_(isWrite)
+    {}
+};
+std::vector<Operation> operations;
+
+
 int main() {
     int Q; // # of operations
-    std::cin >> N >> Q;
 
-    horOnes = DistanceTreePtr(new DistanceTree(Q));
-    horZeros = DistanceTreePtr(new DistanceTree(Q));
-    vertOnes = DistanceTreePtr(new DistanceTree(Q));
-    vertZeros = DistanceTreePtr(new DistanceTree(Q));
+    //std::cin >> N >> Q;
+    scanf("%d %d\n", &N, &Q);
 
-    rows.resize(N);
-    columns.resize(N);
+    int writesCount = 0; // number of write operation
 
     // Read operations
     char operation[100] = {0};
-    int step = 0;
-    while (step < Q) {
-        std::cin >> operation;
+    while (Q--) {
+        scanf("%s", &operation);
+        //std::cin >> operation;
         int op = *((int*)operation);
         switch(op) {
             case rowSetOp:
             case colSetOp: {
-                int pos = 0;
+                int colrow = 0;
                 int value = 0;
-                std::cin >> pos >> value;
-                RowCol& rowcol = (op == colSetOp) ? columns[pos] : rows[pos];
-                DistanceTree& ones = (op == colSetOp) ? *horOnes : *vertOnes;
-                DistanceTree& zeros = (op == colSetOp) ? *horZeros : *vertZeros;
-
-                if (rowcol.value_) {
-                    // We overwrite 1
-                    ones.Set(rowcol.step_, 0);
-                } else {
-                    // We overwrite 0
-                    zeros.Set(rowcol.step_, 0);
-                }
-
-                if (value) {
-                    // Setting new 1 value
-                    ones.Set(step, 1);
-                } else {
-                    // Setting new 0 value
-                    zeros.Set(step, 1);
-                }
-                rowcol.step_ = step;
-                rowcol.value_ = value;
-
+                scanf(" %d %d\n", &colrow, &value);
+                //std::cin >> colrow >> value;
+                // colrow - 1 because it's 1-based
+                operations.push_back(Operation(op == colSetOp, colrow - 1, static_cast<char>(value), true));
+                ++writesCount;
                 break;
             }
             case rowQueryOp:
             case colQueryOp: {
-                int pos = 0;
-                std::cin >> pos;
-
-                int val = 0;
-
-                RowCol& rowcol = (op == colQueryOp) ? columns[pos] : rows[pos];
-                if (rowcol.value_) {
-                    DistanceTree& zeros = (op == colQueryOp) ? *horZeros : *vertZeros;
-                    // how many zeros do we have after filling this row/col with ones for the last time
-                    val = zeros.CountFrom(rowcol.step_); 
-                } else {
-                    DistanceTree& ones = (op == colQueryOp) ? *horOnes : *vertOnes;
-                    // how many ones do we have after filling this row/col with ones for the last time
-                    val = ones.CountFrom(rowcol.step_);
-                    val = N - val; // number of zeros
-                }
-
-                std::cout << val;
+                int colrow = 0;
+                //std::cin >> colrow;
+                scanf(" %d\n", &colrow);
+                // colrow - 1 because it's 1-based
+                operations.push_back(Operation(op == colQueryOp, colrow - 1, 0, false));
             }
             default: {
                 break;
             }
         }
-        ++step;
+    }
+    // Data read ends
+    ///////////////////////////////////////////////
+
+    ///////////////////////////////////////////////
+    // Proceeding data
+    horOnes = DistanceTreePtr(new DistanceTree(writesCount));
+    horZeros = DistanceTreePtr(new DistanceTree(writesCount));
+    vertOnes = DistanceTreePtr(new DistanceTree(writesCount));
+    vertZeros = DistanceTreePtr(new DistanceTree(writesCount));
+
+    rows.resize(N);
+    columns.resize(N);
+
+    int step = 0;
+
+    for (unsigned int i = 0; i < operations.size(); ++i) {
+        Operation& oper = operations[i];
+        if (oper.isWrite_) {
+            // Writting
+            //
+
+            int pos = oper.colrow_;
+            int value = oper.value_;
+            RowCol& rowcol = oper.isCol_ ? columns[pos] : rows[pos];
+            DistanceTree& ones = oper.isCol_ ? *horOnes : *vertOnes;
+            DistanceTree& zeros = oper.isCol_ ? *horZeros : *vertZeros;
+
+            if (rowcol.value_) {
+                // We overwrite 1
+                ones.Set(rowcol.step_, 0);
+            } else {
+                // We overwrite 0
+                zeros.Set(rowcol.step_, 0);
+            }
+
+            if (value) {
+                // Setting new 1 value
+                ones.Set(step, 1);
+            } else {
+                // Setting new 0 value
+                zeros.Set(step, 1);
+            }
+            rowcol.step_ = step;
+            rowcol.value_ = value;
+            ++step;
+        } else {
+            // Calculating
+            //
+
+            int pos = oper.colrow_;
+            int val = 0;
+
+            RowCol& rowcol = oper.isCol_ ? columns[pos] : rows[pos];
+            if (rowcol.value_) {
+                DistanceTree& zeros = oper.isCol_ ? *vertZeros : *horZeros;
+                // how many zeros do we have after filling this row/col with ones for the last time
+                val = zeros.CountFrom(rowcol.step_); 
+            } else {
+                DistanceTree& ones = oper.isCol_ ? *vertOnes : *horOnes;
+                // how many ones do we have after filling this row/col with ones for the last time
+                val = ones.CountFrom(rowcol.step_);
+                val = N - val; // number of zeros
+            }
+
+            //std::cout << val << std::endl;
+            printf("%d\n", val);
+        }
     }
 }
